@@ -1,0 +1,75 @@
+# Welcome to serverless. Read the docs
+# https://serverless.com/framework/docs/
+
+# Serverless.yml is the configuration the CLI
+# uses to deploy your code to your provider of choice
+
+service: forbernie
+
+package:
+  exclude:
+    - node_modules/**
+    - package.json
+    - package-lock.json
+
+plugins:
+  - serverless-plugin-cloudfront-lambda-edge
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  memorySize: 128
+  profile: forbernie
+  
+functions:
+  redirect:
+    handler: index.redirect
+    name: ${self:provider.stage}-forbernie-redirect
+    description: Redirect function for forbernie.us / forbernie.org subdomains
+    timeout: 1
+    lambdaAtEdge:
+      distribution: WebDistribution
+      eventType: viewer-request
+
+resources:
+  Resources:
+    WebDistribution:
+      Type: 'AWS::CloudFront::Distribution'
+      Properties:
+        DistributionConfig:
+          Aliases:
+            - '*.forbernie.org'
+            - '*.forbernie.us'
+          DefaultCacheBehavior:
+            AllowedMethods:
+              - GET
+              - HEAD
+            ForwardedValues: 
+              QueryString: false
+            TargetOriginId: origin-forbernie-us
+            ViewerProtocolPolicy: allow-all
+          Enabled: true
+          HttpVersion: http2
+          IPV6Enabled: true
+          Origins:
+            - CustomOriginConfig:
+                OriginProtocolPolicy: match-viewer
+                OriginSSLProtocols:
+                  - TLSv1
+                  - TLSv1.1
+                  - TLSv1.2
+              DomainName: forbernie.org
+              Id: origin-forbernie-org
+            - CustomOriginConfig:
+                OriginProtocolPolicy: match-viewer
+                OriginSSLProtocols:
+                  - TLSv1
+                  - TLSv1.1
+                  - TLSv1.2
+              DomainName: forbernie.us
+              Id: origin-forbernie-us
+          PriceClass: PriceClass_100
+          ViewerCertificate:
+            CloudFrontDefaultCertificate: true
+
+
